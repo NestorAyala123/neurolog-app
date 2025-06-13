@@ -1,5 +1,5 @@
 -- ================================================================
--- NEUROLOG APP - SCRIPT COMPLETO DE BASE DE DATOS
+-- NEUROLOG APP - SCRIPT COMPLETO DE BASE DE DATOS (VERSIÓN CORREGIDA)
 -- ================================================================
 -- Ejecutar completo en Supabase SQL Editor
 -- Borra todo y crea desde cero según últimas actualizaciones
@@ -253,29 +253,40 @@ CREATE TRIGGER on_auth_user_created
   EXECUTE FUNCTION handle_new_user();
 
 -- ================================================================
--- 6. CREAR FUNCIONES RPC
+-- 6. CREAR FUNCIONES RPC (VERSIÓN CORREGIDA)
 -- ================================================================
 
--- Función para verificar acceso a niño
+-- Función para verificar acceso a niño (corregida)
 CREATE OR REPLACE FUNCTION user_can_access_child(child_uuid UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM children 
     WHERE id = child_uuid 
-      AND created_by = auth.uid()
+      AND (created_by = auth.uid() OR EXISTS (
+        SELECT 1 FROM user_child_relations 
+        WHERE child_id = child_uuid 
+          AND user_id = auth.uid()
+          AND is_active = true
+      ))
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Función para verificar permisos de edición
+-- Función para verificar permisos de edición (corregida)
 CREATE OR REPLACE FUNCTION user_can_edit_child(child_uuid UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM children 
     WHERE id = child_uuid 
-      AND created_by = auth.uid()
+      AND (created_by = auth.uid() OR EXISTS (
+        SELECT 1 FROM user_child_relations 
+        WHERE child_id = child_uuid 
+          AND user_id = auth.uid()
+          AND can_edit = true
+          AND is_active = true
+      ))
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -316,27 +327,29 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ================================================================
--- 7. CREAR VISTAS
+-- 7. CREAR VISTAS (VERSIÓN CORREGIDA)
 -- ================================================================
 
--- Vista para niños accesibles por usuario
+-- Vista para niños accesibles por usuario (corregida)
 CREATE OR REPLACE VIEW user_accessible_children AS
 SELECT 
   c.*,
-  'parent'::TEXT as relationship_type,
-  true as can_edit,
-  true as can_view,
-  true as can_export,
-  true as can_invite_others,
-  c.created_at as granted_at,
-  NULL::TIMESTAMPTZ as expires_at,
+  COALESCE(ucr.relationship_type, 'owner') as relationship_type,
+  COALESCE(ucr.can_edit, true) as can_edit,
+  COALESCE(ucr.can_view, true) as can_view,
+  COALESCE(ucr.can_export, true) as can_export,
+  COALESCE(ucr.can_invite_others, true) as can_invite_others,
+  COALESCE(ucr.granted_at, c.created_at) as granted_at,
+  ucr.expires_at,
   p.full_name as creator_name
 FROM children c
 JOIN profiles p ON c.created_by = p.id
-WHERE c.created_by = auth.uid()
-  AND c.is_active = true;
+LEFT JOIN user_child_relations ucr ON c.id = ucr.child_id AND ucr.user_id = auth.uid()
+WHERE (c.created_by = auth.uid() OR ucr.user_id = auth.uid())
+  AND c.is_active = true
+  AND (ucr.is_active IS NULL OR ucr.is_active = true);
 
--- Vista para estadísticas de logs por niño
+-- Vista para estadísticas de logs por niño (corregida)
 CREATE OR REPLACE VIEW child_log_statistics AS
 SELECT 
   c.id as child_id,
@@ -350,8 +363,14 @@ SELECT
   COUNT(CASE WHEN dl.is_private THEN 1 END) as private_logs,
   COUNT(CASE WHEN dl.reviewed_at IS NOT NULL THEN 1 END) as reviewed_logs
 FROM children c
-LEFT JOIN daily_logs dl ON c.id = dl.child_id AND dl.is_deleted = false
-WHERE c.created_by = auth.uid()
+LEFT JOIN daily_logs dl ON c.id = dl.child_id AND (dl.is_deleted = false OR dl.is_deleted IS NULL)
+WHERE (c.created_by = auth.uid() OR EXISTS (
+  SELECT 1 FROM user_child_relations 
+  WHERE child_id = c.id 
+    AND user_id = auth.uid()
+    AND is_active = true
+))
+AND c.is_active = true
 GROUP BY c.id, c.name;
 
 -- ================================================================
@@ -372,7 +391,7 @@ INSERT INTO categories (name, description, color, icon, sort_order) VALUES
 ('Otros', 'Otros registros importantes', '#6B7280', 'more-horizontal', 10);
 
 -- ================================================================
--- 9. HABILITAR RLS Y CREAR POLÍTICAS SIMPLES
+-- 9. HABILITAR RLS Y CREAR POLÍTICAS (VERSIÓN CORREGIDA)
 -- ================================================================
 
 -- Habilitar RLS
@@ -393,9 +412,16 @@ CREATE POLICY "Users can update own profile" ON profiles
 CREATE POLICY "Users can insert own profile" ON profiles
   FOR INSERT WITH CHECK (auth.uid() = id);
 
--- POLÍTICAS PARA CHILDREN (SIMPLES, SIN RECURSIÓN)
-CREATE POLICY "Users can view own created children" ON children
-  FOR SELECT USING (created_by = auth.uid());
+-- POLÍTICAS PARA CHILDREN (CORREGIDAS)
+CREATE POLICY "Users can view accessible children" ON children
+  FOR SELECT USING (
+    created_by = auth.uid() OR EXISTS (
+      SELECT 1 FROM user_child_relations 
+      WHERE child_id = children.id 
+        AND user_id = auth.uid()
+        AND is_active = true
+    )
+  );
 
 CREATE POLICY "Authenticated users can create children" ON children
   FOR INSERT WITH CHECK (
@@ -407,9 +433,9 @@ CREATE POLICY "Creators can update own children" ON children
   FOR UPDATE USING (created_by = auth.uid())
   WITH CHECK (created_by = auth.uid());
 
--- POLÍTICAS PARA USER_CHILD_RELATIONS (SIMPLES)
+-- POLÍTICAS PARA USER_CHILD_RELATIONS (CORREGIDAS)
 CREATE POLICY "Users can view own relations" ON user_child_relations
-  FOR SELECT USING (user_id = auth.uid());
+  FOR SELECT USING (user_id = auth.uid() OR granted_by = auth.uid());
 
 CREATE POLICY "Users can create relations for own children" ON user_child_relations
   FOR INSERT WITH CHECK (
@@ -421,23 +447,26 @@ CREATE POLICY "Users can create relations for own children" ON user_child_relati
     )
   );
 
--- POLÍTICAS PARA DAILY_LOGS (SIMPLES)
-CREATE POLICY "Users can view logs of own children" ON daily_logs
+CREATE POLICY "Creators can manage relations" ON user_child_relations
+  FOR UPDATE USING (granted_by = auth.uid())
+  WITH CHECK (granted_by = auth.uid());
+
+-- POLÍTICAS PARA DAILY_LOGS (CORREGIDAS)
+CREATE POLICY "Users can view logs of accessible children" ON daily_logs
   FOR SELECT USING (
     EXISTS (
-      SELECT 1 FROM children 
-      WHERE id = daily_logs.child_id 
-        AND created_by = auth.uid()
-    )
+      SELECT 1 FROM user_accessible_children 
+      WHERE id = daily_logs.child_id
+    ) AND (is_private = false OR logged_by = auth.uid())
   );
 
-CREATE POLICY "Users can create logs for own children" ON daily_logs
+CREATE POLICY "Users can create logs for accessible children" ON daily_logs
   FOR INSERT WITH CHECK (
     logged_by = auth.uid() AND
     EXISTS (
-      SELECT 1 FROM children 
-      WHERE id = daily_logs.child_id 
-        AND created_by = auth.uid()
+      SELECT 1 FROM user_accessible_children 
+      WHERE id = daily_logs.child_id
+      AND (relationship_type = 'owner' OR can_edit = true)
     )
   );
 
@@ -528,17 +557,12 @@ BEGIN
   RAISE NOTICE 'Todas las tablas, funciones, vistas y políticas han sido creadas.';
   RAISE NOTICE 'La base de datos está lista para usar.';
   RAISE NOTICE '';
-  RAISE NOTICE 'FUNCIONALIDADES INCLUIDAS:';
-  RAISE NOTICE '✅ Gestión de usuarios (profiles)';
-  RAISE NOTICE '✅ Gestión de niños (children)';
-  RAISE NOTICE '✅ Relaciones usuario-niño (user_child_relations)';
-  RAISE NOTICE '✅ Registros diarios (daily_logs)';
-  RAISE NOTICE '✅ Categorías predefinidas (categories)';
-  RAISE NOTICE '✅ Sistema de auditoría (audit_logs)';
-  RAISE NOTICE '✅ Políticas RLS funcionales';
-  RAISE NOTICE '✅ Funciones RPC necesarias';
-  RAISE NOTICE '✅ Vistas optimizadas';
-  RAISE NOTICE '✅ Índices para performance';
+  RAISE NOTICE 'MEJORAS IMPLEMENTADAS EN ESTA VERSIÓN:';
+  RAISE NOTICE '✅ Vista user_accessible_children ahora incluye niños compartidos';
+  RAISE NOTICE '✅ Políticas RLS mejoradas para acceso compartido';
+  RAISE NOTICE '✅ Funciones de verificación de acceso corregidas';
+  RAISE NOTICE '✅ Manejo de registros privados en políticas de daily_logs';
+  RAISE NOTICE '✅ Mejor manejo de relaciones usuario-niño';
   RAISE NOTICE '';
-  RAISE NOTICE 'PRÓXIMO PASO: Probar la aplicación NeuroLog';
+  RAISE NOTICE 'PRÓXIMO PASO: Probar la aplicación NeuroLog con los nuevos permisos';
 END $$;
