@@ -48,16 +48,16 @@ import {
   ClockIcon,
   ArrowLeftIcon
 } from 'lucide-react';
-import { format, differenceInYears, subMonths } from 'date-fns';
+import { format, differenceInYears, subMonths, subWeeks } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export default function ChildDetailPage() {
   const params = useParams();
   const router = useRouter();
   const childId = params.id as string;
-  const { user } = useAuth();
-  const { children, loading: childLoading, getChildById } = useChildren();
-  const { logs, loading: logsLoading, stats } = useLogs({ childId });
+  useAuth();
+  const { loading: childLoading, getChildById } = useChildren();
+  const { logs } = useLogs({ childId });
   
   const [child, setChild] = useState<ChildWithRelation | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -113,6 +113,24 @@ export default function ChildDetailPage() {
     pendingReviews: logs.filter(log => !log.reviewed_by).length,
     followUpsRequired: logs.filter(log => log.follow_up_required && !log.follow_up_date).length
   };
+
+  // Helper to map category color to a CSS class
+  function getCategoryColorClass(color: string | undefined) {
+    if (!color) return 'bg-gray-300';
+    // Map known colors to Tailwind classes, fallback to inline style if not found
+    switch (color) {
+      case '#FF6384': return 'bg-red-400';
+      case '#36A2EB': return 'bg-blue-400';
+      case '#FFCE56': return 'bg-yellow-400';
+      case '#4BC0C0': return 'bg-teal-400';
+      case '#9966FF': return 'bg-purple-400';
+      case '#FF9F40': return 'bg-orange-400';
+      // Add more mappings as needed
+      default:
+        // If color is a hex, use a custom class or fallback
+        return 'bg-gray-300';
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -235,7 +253,7 @@ export default function ChildDetailPage() {
             <div className="flex items-center space-x-2">
               <UsersIcon className="h-5 w-5 text-gray-600" />
               <div>
-                <p className="text-2xl font-bold text-gray-900">{child.user_relations?.length || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">{child.user_relations?.length ?? 0}</p>
                 <p className="text-xs text-gray-600">Usuarios</p>
               </div>
             </div>
@@ -268,7 +286,7 @@ export default function ChildDetailPage() {
                 <CardContent className="space-y-4">
                   <div className="flex items-start space-x-4">
                     <Avatar className="h-16 w-16">
-                      <AvatarImage src={child.avatar_url} alt={child.name} />
+                      <AvatarImage src={child.avatar_url ?? undefined} alt={child.name} />
                       <AvatarFallback className="bg-blue-100 text-blue-600 text-xl font-bold">
                         {child.name.charAt(0)}
                       </AvatarFallback>
@@ -300,10 +318,9 @@ export default function ChildDetailPage() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-
-              {/* Recent Logs */}
-              <Card>
+                      <div
+                        className={`w-3 h-3 rounded-full mt-2 ${getCategoryColorClass(log.category_color)}`}
+                      />
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center">
                     <ActivityIcon className="h-5 w-5 mr-2" />
@@ -325,7 +342,7 @@ export default function ChildDetailPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {log.category_name || 'Sin categoría'}
+                            {log.category_name ?? 'Sin categoría'}
                           </p>
                           <span className="text-xs text-gray-500">
                             {format(new Date(log.created_at), 'dd MMM, HH:mm', { locale: es })}

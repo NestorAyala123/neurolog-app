@@ -163,6 +163,7 @@ export interface RelationInsert {
 
 // Tipo combinado para niños con información de relación
 export interface ChildWithRelation extends Child {
+  user_relations: any;
   user_id: string;
   relationship_type: RelationshipType;
   can_view: boolean;
@@ -269,6 +270,8 @@ export interface LogUpdate {
 
 // Tipo combinado para logs con información detallada
 export interface LogWithDetails extends DailyLog {
+  category_name: string;
+  category_color: BackgroundColor | undefined;
   child: {
     id: string;
     name: string;
