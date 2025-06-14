@@ -71,6 +71,7 @@ function calculateImprovementTrend(logs: any[]): number {
 }
 
 export default function ReportsPage() {
+  
   const { user } = useAuth();
   const { children, loading: childrenLoading } = useChildren();
   const { logs, stats, loading: logsLoading } = useLogs();
