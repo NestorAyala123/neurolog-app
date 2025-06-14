@@ -207,12 +207,12 @@ function FiltersCard({ filters, onFiltersChange }: FiltersCardProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Búsqueda por nombre */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Buscar por nombre</label>
+            <label className="text-sm font-medium">Nombre</label>
             <div className="relative">
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Nombre del niño..."
-                value={filters.search || ''}
+                value={filters.search ?? ''}
                 onChange={(e) => onFiltersChange({ ...filters, search: e.target.value })}
                 className="pl-10"
               />
@@ -221,7 +221,7 @@ function FiltersCard({ filters, onFiltersChange }: FiltersCardProps) {
 
           {/* Relación */}
           <Select 
-            value={filters.relationship_type || 'all'} 
+            value={filters.relationship_type ?? 'all'} 
             onValueChange={(value) => onFiltersChange({ 
               ...filters, 
               relationship_type: value === 'all' ? undefined : value as RelationshipType 
@@ -508,7 +508,7 @@ export default function ChildrenPage() {
       {/* Lista/Grid de niños */}
       {loading ? (
         <ChildrenLoadingSkeleton />
-      ) : error || filteredChildren.length === 0 ? (
+      ) : error ?? filteredChildren.length === 0 ? (
         <ChildrenErrorOrEmpty
           error={error}
           childrenCount={children.length}
