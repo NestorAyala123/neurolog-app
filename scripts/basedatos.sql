@@ -297,30 +297,55 @@ CREATE OR REPLACE FUNCTION audit_sensitive_access(
 )
 RETURNS VOID AS $$
 BEGIN
-  INSERT INTO audit_logs (
-    table_name,
-    operation,
-    record_id,
-    user_id,
-    user_role,
-    new_values,
-    risk_level
-  ) VALUES (
-    'sensitive_access',
-    'SELECT',
-    resource_id,
-    auth.uid(),
-    (SELECT role FROM profiles WHERE id = auth.uid()),
-    jsonb_build_object(
-      'action_type', action_type,
-      'details', action_details,
-      'timestamp', NOW()
-    ),
-    'medium'
-  );
-EXCEPTION
-  WHEN OTHERS THEN
-    NULL; -- No fallar por errores de auditoría
+  BEGIN
+    INSERT INTO audit_logs (
+      table_name,
+      operation,
+      record_id,
+      user_id,
+      user_role,
+      new_values,
+      risk_level
+    ) VALUES (
+      'sensitive_access',
+      'SELECT',
+      resource_id,
+      auth.uid(),
+      (SELECT role FROM profiles WHERE id = auth.uid()),
+      jsonb_build_object(
+        'action_type', action_type,
+        'details', action_details,
+        'timestamp', NOW()
+      ),
+      'medium'
+    );
+  EXCEPTION
+    WHEN OTHERS THEN
+      -- Registrar el error en audit_logs y mostrar un aviso
+      RAISE NOTICE 'Error en audit_sensitive_access: %', SQLERRM;
+      INSERT INTO audit_logs (
+        table_name,
+        operation,
+        record_id,
+        user_id,
+        user_role,
+        new_values,
+        risk_level
+      ) VALUES (
+        'audit_sensitive_access_error',
+        'ERROR',
+        resource_id,
+        auth.uid(),
+        (SELECT role FROM profiles WHERE id = auth.uid()),
+        jsonb_build_object(
+          'action_type', action_type,
+          'details', action_details,
+          'timestamp', NOW(),
+          'error', SQLERRM
+        ),
+        'high'
+      );
+  END;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
