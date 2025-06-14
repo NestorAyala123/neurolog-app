@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -34,10 +34,8 @@ import {
   EyeIcon,
   UserPlusIcon,
   CalendarIcon,
-  MapPinIcon,
   HeartIcon,
   TrendingUpIcon,
-  DownloadIcon,
   UsersIcon,
   BookOpenIcon,
   RefreshCwIcon
@@ -56,7 +54,7 @@ interface ChildCardProps {
   onManageUsers: (child: ChildWithRelation) => void;
 }
 
-function ChildCard({ child, onEdit, onViewDetails, onManageUsers }: ChildCardProps) {
+function ChildCard({ child, onEdit, onViewDetails, onManageUsers }: Readonly<ChildCardProps>) {
   const calculateAge = (birthDate: string) => {
     const birth = new Date(birthDate);
     const today = new Date();
@@ -96,7 +94,7 @@ function ChildCard({ child, onEdit, onViewDetails, onManageUsers }: ChildCardPro
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={child.avatar_url || undefined} />
+              <AvatarImage src={child.avatar_url ?? undefined} />
               <AvatarFallback className="bg-blue-100 text-blue-600">
                 {child.name.charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -346,17 +344,29 @@ function ChildrenLoadingSkeleton() {
 }
 
 // Error y vacío extraídos
+/**
+ * Displays an error or empty state for the children list in the dashboard.
+ *
+ * - If an error is present, shows an error message with a retry button.
+ * - If there are no children (`childrenCount === 0`), prompts the user to add the first child.
+ * - If there are children but none match the current filters, suggests clearing filters.
+ *
+ * @param error Optional error message to display if loading children fails.
+ * @param childrenCount The number of children currently available.
+ * @param onRetry Callback invoked when the user clicks the retry button after an error.
+ * @param onClearFilters Callback invoked when the user clicks the button to clear filters.
+ */
 function ChildrenErrorOrEmpty({
   error,
   childrenCount,
   onRetry,
   onClearFilters,
-}: {
+}: Readonly<{
   error?: string;
   childrenCount: number;
   onRetry: () => void;
   onClearFilters: () => void;
-}) {
+}>) {
   if (error) {
     return (
       <Card className="border-red-200 bg-red-50">
@@ -511,7 +521,7 @@ export default function ChildrenPage() {
         <ChildrenLoadingSkeleton />
       ) : error ?? filteredChildren.length === 0 ? (
         <ChildrenErrorOrEmpty
-          error={error}
+          error={error ?? undefined}
           childrenCount={children.length}
           onRetry={() => window.location.reload()}
           onClearFilters={() => setFilters({})}
