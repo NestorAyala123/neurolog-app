@@ -250,6 +250,7 @@ export function CorrelationAnalysis({ logs }: CorrelationAnalysisProps) {
 
 export function AdvancedInsights({ logs }: AdvancedInsightsProps) {
   const generateInsights = () => {
+    
     const insights = [];
     
     // Análisis de frecuencia
