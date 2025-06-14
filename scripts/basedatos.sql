@@ -259,6 +259,7 @@ BEGIN
     SELECT 1 FROM children 
     WHERE id = child_uuid 
       AND (created_by = auth.uid() OR EXISTS (
+        
         SELECT 1 FROM user_child_relations 
         WHERE child_id = child_uuid 
           AND user_id = auth.uid()
