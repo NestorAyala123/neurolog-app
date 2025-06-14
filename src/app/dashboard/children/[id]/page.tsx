@@ -318,9 +318,6 @@ export default function ChildDetailPage() {
                     </div>
                   </div>
                 </CardContent>
-                      <div
-                        className={`w-3 h-3 rounded-full mt-2 ${getCategoryColorClass(log.category_color)}`}
-                      />
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center">
                     <ActivityIcon className="h-5 w-5 mr-2" />
@@ -335,9 +332,8 @@ export default function ChildDetailPage() {
                 <CardContent>
                   {logs.slice(0, 5).map((log) => (
                     <div key={log.id} className="flex items-start space-x-3 py-3 border-b border-gray-100 last:border-0">
-                      <div 
-                        className="w-3 h-3 rounded-full mt-2"
-                        style={{ backgroundColor: log.category_color }}
+                      <div
+                        className={`w-3 h-3 rounded-full mt-2 ${getCategoryColorClass(log.category_color)}`}
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -399,7 +395,7 @@ export default function ChildDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {child.user_relations?.map((relation) => (
+                  {child.user_relations?.map((relation: ChildWithRelation['user_relations'][number]) => (
                     <div key={`${relation.user_id}-${relation.relationship_type}`} className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
                         <Avatar className="h-8 w-8">
