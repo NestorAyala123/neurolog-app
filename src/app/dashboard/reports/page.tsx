@@ -162,10 +162,10 @@ export default function ReportsPage() {
             </div>
             
             <div>
-              <label className="text-sm font-medium mb-2 block">Período</label>
+              <label htmlFor="date-range-picker" className="text-sm font-medium mb-2 block">Período</label>
               <DatePickerWithRange 
                 date={dateRange}
-                onDateChange={setDateRange}
+                onSelect={setDateRange}
               />
             </div>
 
