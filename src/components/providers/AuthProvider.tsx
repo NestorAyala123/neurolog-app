@@ -369,6 +369,39 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
      *  LISTENER DE AUTH MEJORADO - UNA SOLA SUBSCRIPCIÓN
      */
     const setupAuthListener = () => {
+      // Helper functions for each event type to reduce complexity
+      const handleSignedIn = async (session: any) => {
+        console.log('✅ User signed in, fetching profile...');
+        setLoading(true);
+
+        await updateLastLogin(session.user.id);
+
+        const profile = await fetchProfile(session.user.id);
+        if (profile && mountedRef.current) {
+          setUser(profile);
+
+          const adminStatus = await checkAdminStatus(session.user.id);
+          if (mountedRef.current) {
+            setIsAdmin(adminStatus);
+          }
+        }
+      };
+
+      const handleSignedOut = () => {
+        console.log('👋 User signed out');
+        if (mountedRef.current) {
+          setUser(null);
+          setIsAdmin(false);
+          setError(null);
+        }
+      };
+
+      const handleTokenRefreshed = () => {
+        console.log('🔄 Token refreshed, maintaining user state');
+        // No necesitamos recargar el perfil en token refresh
+        // El usuario ya está cargado y el token se renovó automáticamente
+      };
+
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
           if (!mountedRef.current) return;
@@ -377,31 +410,11 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
 
           try {
             if (event === 'SIGNED_IN' && session?.user) {
-              console.log('✅ User signed in, fetching profile...');
-              setLoading(true);
-              
-              await updateLastLogin(session.user.id);
-              
-              const profile = await fetchProfile(session.user.id);
-              if (profile && mountedRef.current) {
-                setUser(profile);
-                
-                const adminStatus = await checkAdminStatus(session.user.id);
-                if (mountedRef.current) {
-                  setIsAdmin(adminStatus);
-                }
-              }
+              await handleSignedIn(session);
             } else if (event === 'SIGNED_OUT') {
-              console.log('👋 User signed out');
-              if (mountedRef.current) {
-                setUser(null);
-                setIsAdmin(false);
-                setError(null);
-              }
+              handleSignedOut();
             } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-              console.log('🔄 Token refreshed, maintaining user state');
-              // No necesitamos recargar el perfil en token refresh
-              // El usuario ya está cargado y el token se renovó automáticamente
+              handleTokenRefreshed();
             }
           } catch (err) {
             console.error('❌ Error handling auth state change:', err);
