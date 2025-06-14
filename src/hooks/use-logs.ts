@@ -134,6 +134,56 @@ export function useLogs(options: UseLogsOptions = {}): UseLogsReturn {
   // FUNCIONES DE FETCH ESTABILIZADAS
   // ================================================================
 
+  // Helper to build the logs query
+  const buildLogsQuery = (
+    accessibleChildrenIds: string[],
+    page: number,
+    pageSize: number,
+    childId: string | undefined,
+    includePrivate: boolean,
+    includeDeleted: boolean
+  ) => {
+    let query = supabase
+      .from('daily_logs')
+      .select(`
+        *,
+        child:children!inner(id, name, avatar_url),
+        category:categories(id, name, color, icon),
+        logged_by_profile:profiles!daily_logs_logged_by_fkey(id, full_name, avatar_url)
+      `)
+      .in('child_id', accessibleChildrenIds)
+      .eq('is_active', !includeDeleted)
+      .order('created_at', { ascending: false })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (childId) {
+      query = query.eq('child_id', childId);
+    }
+    if (!includePrivate) {
+      query = query.eq('is_private', false);
+    }
+    return query;
+  };
+
+  // Helper to map logs with fallback values
+  const mapLogs = (data: any[]): LogWithDetails[] => {
+    return (data || []).map(log => ({
+      ...log,
+      child: log.child || { id: log.child_id, name: 'Niño desconocido', avatar_url: null },
+      category: log.category || { id: '', name: 'Sin categoría', color: '#gray', icon: 'circle' },
+      logged_by_profile: log.logged_by_profile || { id: log.logged_by, full_name: 'Usuario desconocido', avatar_url: null }
+    }));
+  };
+
+  // Helper to handle no accessible children
+  const handleNoAccessibleChildren = () => {
+    if (mountedRef.current) {
+      setLogs([]);
+      setHasMore(false);
+      setLoading(false);
+    }
+  };
+
   const fetchLogs = useCallback(async (page: number = 0, append: boolean = false): Promise<void> => {
     if (!userId) return;
 
@@ -144,63 +194,34 @@ export function useLogs(options: UseLogsOptions = {}): UseLogsReturn {
       }
 
       console.log(`📊 Fetching logs - Page: ${page}, Append: ${append}`);
-      
-      // Obtener niños accesibles
+
       const accessibleChildrenIds = await getAccessibleChildrenIds();
       if (accessibleChildrenIds.length === 0) {
-        if (mountedRef.current) {
-          setLogs([]);
-          setHasMore(false);
-          setLoading(false);
-        }
+        handleNoAccessibleChildren();
         return;
       }
 
-      // Query base
-      let query = supabase
-        .from('daily_logs')
-        .select(`
-          *,
-          child:children!inner(id, name, avatar_url),
-          category:categories(id, name, color, icon),
-          logged_by_profile:profiles!daily_logs_logged_by_fkey(id, full_name, avatar_url)
-        `)
-        .in('child_id', accessibleChildrenIds)
-        .eq('is_active', !includeDeleted)
-        .order('created_at', { ascending: false })
-        .range(page * pageSize, (page + 1) * pageSize - 1);
-
-      // Filtrar por niño específico si se proporciona
-      if (childId) {
-        if (!accessibleChildrenIds.includes(childId)) {
-          throw new Error('No tienes acceso a este niño');
-        }
-        query = query.eq('child_id', childId);
+      if (childId && !accessibleChildrenIds.includes(childId)) {
+        throw new Error('No tienes acceso a este niño');
       }
 
-      // Filtrar por privacidad
-      if (!includePrivate) {
-        query = query.eq('is_private', false);
-      }
+      const query = buildLogsQuery(
+        accessibleChildrenIds,
+        page,
+        pageSize,
+        childId,
+        includePrivate,
+        includeDeleted
+      );
 
       const { data, error } = await query;
-      
+
       if (error) throw error;
 
-      const newLogs = (data || []).map(log => ({
-        ...log,
-        child: log.child || { id: log.child_id, name: 'Niño desconocido', avatar_url: null },
-        category: log.category || { id: '', name: 'Sin categoría', color: '#gray', icon: 'circle' },
-        logged_by_profile: log.logged_by_profile || { id: log.logged_by, full_name: 'Usuario desconocido', avatar_url: null }
-      })) as LogWithDetails[];
+      const newLogs = mapLogs(data) as LogWithDetails[];
 
       if (mountedRef.current) {
-        if (append) {
-          setLogs(prev => [...prev, ...newLogs]);
-        } else {
-          setLogs(newLogs);
-        }
-        
+        setLogs(prev => append ? [...prev, ...newLogs] : newLogs);
         setHasMore(newLogs.length === pageSize);
         console.log(`✅ Logs fetched successfully: ${newLogs.length}`);
       }
