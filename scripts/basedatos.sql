@@ -263,7 +263,7 @@ BEGIN
         WHERE child_id = child_uuid 
           AND user_id = auth.uid()
           AND is_active = true
-          
+
       ))
   );
 END;
