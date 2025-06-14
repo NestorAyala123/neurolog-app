@@ -104,8 +104,10 @@ export default function ReportsPage() {
   // Calcular métricas
   const metrics = {
     totalLogs: filteredLogs.length,
-    averageMood: filteredLogs.filter(l => l.mood_score).length > 0 
-      ? (filteredLogs.filter(l => l.mood_score).reduce((sum, l) => sum + l.mood_score, 0) / filteredLogs.filter(l => l.mood_score).length)
+    averageMood: filteredLogs.filter(l => typeof l.mood_score === 'number').length > 0 
+      ? (filteredLogs
+          .filter(l => typeof l.mood_score === 'number')
+          .reduce((sum, l) => sum + (l.mood_score ?? 0), 0) / filteredLogs.filter(l => typeof l.mood_score === 'number').length)
       : 0,
     improvementTrend: calculateImprovementTrend(filteredLogs),
     activeCategories: new Set(filteredLogs.map(l => l.category_name).filter(Boolean)).size,
