@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useLogs } from '@/hooks/use-logs';
 import {
@@ -23,9 +22,7 @@ import {
   Menu,
   X,
   LogOut,
-  Bell,
   Shield,
-  FileText,
   Calendar,
   Download,
   HelpCircle,
@@ -142,6 +139,18 @@ export function Sidebar() {
     return pathname.startsWith(href);
   };
 
+  // Extracted role label for user
+  let roleLabel = 'Usuario';
+  if (user?.role === 'parent') {
+    roleLabel = 'Padre/Madre';
+  } else if (user?.role === 'teacher') {
+    roleLabel = 'Docente';
+  } else if (user?.role === 'specialist') {
+    roleLabel = 'Especialista';
+  } else if (user?.role === 'admin') {
+    roleLabel = 'Administrador';
+  }
+
   return (
     <>
       {/* Mobile menu button - Fixed position for better accessibility */}
@@ -206,34 +215,35 @@ export function Sidebar() {
         </div>
 
         {/* User Info Card */}
-        <div className="p-4 lg:p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10 ring-2 ring-blue-100">
-              <AvatarImage src={user?.avatar_url} alt={user?.full_name} />
-              <AvatarFallback className="bg-gradient-to-br from-blue-100 to-purple-100 text-blue-700 font-semibold">
-                {user?.full_name?.charAt(0)?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user?.full_name || 'Usuario'}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {user?.role === 'parent' ? 'Padre/Madre' :
-                 user?.role === 'teacher' ? 'Docente' :
-                 user?.role === 'specialist' ? 'Especialista' : 
-                 user?.role === 'admin' ? 'Administrador' : 'Usuario'}
-              </p>
-            </div>
-            {notifications > 0 && (
-              <Badge 
-                variant="destructive" 
-                className="h-5 w-5 text-xs p-0 flex items-center justify-center"
-              >
-                {notifications > 9 ? '9+' : notifications}
-              </Badge>
-            )}
+        <div className="flex items-center space-x-3 p-4 lg:p-6 border-b border-gray-100">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.full_name ?? 'Usuario'} />
+            <AvatarFallback>
+              {user?.full_name
+                ? user.full_name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()
+                : 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-gray-900 truncate">
+              {user?.full_name ?? 'Usuario'}
+            </p>
+            <p className="text-xs text-gray-500 capitalize">
+              {roleLabel}
+            </p>
           </div>
+          {notifications > 0 && (
+            <Badge 
+              variant="destructive" 
+              className="h-5 w-5 text-xs p-0 flex items-center justify-center"
+            >
+              {notifications > 9 ? '9+' : notifications}
+            </Badge>
+          )}
         </div>
 
         {/* Navigation */}

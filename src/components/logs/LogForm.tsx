@@ -35,24 +35,20 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useChildren } from '@/hooks/use-children';
 import { useLogs } from '@/hooks/use-logs';
-import { supabase, uploadFile, getPublicUrl, STORAGE_BUCKETS } from '@/lib/supabase';
+import { uploadFile, getPublicUrl } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import type { 
   DailyLog, 
   LogInsert, 
   LogUpdate, 
   Category, 
-  IntensityLevel,
-  LogAttachment,
-  ChildWithRelation
+  LogAttachment
 } from '@/types';
 import { 
-  CalendarIcon, 
   ImageIcon, 
   PlusIcon, 
   TrashIcon, 
   SaveIcon,
-  HeartIcon,
-  AlertTriangleIcon,
   EyeIcon,
   EyeOffIcon,
   TagIcon,
@@ -63,7 +59,6 @@ import {
   UploadIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 
 // ================================================================
 // ESQUEMAS DE VALIDACIÓN
@@ -135,7 +130,7 @@ interface TagsInputProps {
 // COMPONENTES AUXILIARES
 // ================================================================
 
-function MoodSelector({ value, onChange }: MoodSelectorProps) {
+function MoodSelector({ value, onChange }: Readonly<MoodSelectorProps>) {
   const moods = [
     { value: 1, emoji: '😢', label: 'Muy triste', color: 'text-red-500' },
     { value: 2, emoji: '😕', label: 'Triste', color: 'text-orange-500' },
@@ -186,9 +181,9 @@ function MoodSelector({ value, onChange }: MoodSelectorProps) {
   );
 }
 
-function AttachmentsManager({ attachments, onChange, childId }: AttachmentsManagerProps) {
+function AttachmentsManager({ attachments, onChange, childId }: Readonly<AttachmentsManagerProps>) {
   const [uploading, setUploading] = useState(false);
-  const { user } = useAuth();
+  // const { user } = useAuth();
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -199,11 +194,10 @@ function AttachmentsManager({ attachments, onChange, childId }: AttachmentsManag
       const newAttachments: LogAttachment[] = [];
 
       for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop();
         const fileName = `${childId}/${Date.now()}-${file.name}`;
         
-        await uploadFile('attachments', fileName, file);
-        const url = getPublicUrl('attachments', fileName);
+        await uploadFile('ATTACHMENTS', file, fileName);
+        const url = getPublicUrl('ATTACHMENTS', fileName);
         
         let type: LogAttachment['type'] = 'document';
         if (file.type.startsWith('image/')) type = 'image';
@@ -268,6 +262,8 @@ function AttachmentsManager({ attachments, onChange, childId }: AttachmentsManag
           className="hidden"
           onChange={handleFileUpload}
           disabled={uploading}
+          title="Selecciona archivos para adjuntar"
+          placeholder="Selecciona archivos para adjuntar"
         />
       </div>
 
@@ -326,7 +322,7 @@ function AttachmentsManager({ attachments, onChange, childId }: AttachmentsManag
   );
 }
 
-function TagsInput({ tags, onChange }: TagsInputProps) {
+function TagsInput({ tags, onChange }: Readonly<TagsInputProps>) {
   const [newTag, setNewTag] = useState('');
 
   const addTag = () => {
@@ -369,7 +365,7 @@ function TagsInput({ tags, onChange }: TagsInputProps) {
           placeholder="Agregar etiqueta..."
           value={newTag}
           onChange={(e) => setNewTag(e.target.value)}
-          onKeyPress={(e) => {
+          onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
               addTag();
@@ -393,7 +389,7 @@ function TagsInput({ tags, onChange }: TagsInputProps) {
 // COMPONENTE PRINCIPAL
 // ================================================================
 
-export default function LogForm({ log, childId, mode, onSuccess, onCancel }: LogFormProps) {
+export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Readonly<LogFormProps>) {
   const { user } = useAuth();
   const { children } = useChildren();
   const { createLog, updateLog } = useLogs();
@@ -404,20 +400,20 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Log
   const form = useForm<LogFormData>({
     resolver: zodResolver(logFormSchema),
     defaultValues: {
-      child_id: log?.child_id || childId || '',
-      category_id: log?.category_id || '',
-      title: log?.title || '',
-      content: log?.content || '',
-      mood_score: log?.mood_score || undefined,
-      intensity_level: log?.intensity_level || 'medium',
-      log_date: log?.log_date || format(new Date(), 'yyyy-MM-dd'),
-      is_private: log?.is_private || false,
-      tags: log?.tags || [],
-      location: log?.location || '',
-      weather: log?.weather || '',
-      follow_up_required: log?.follow_up_required || false,
-      follow_up_date: log?.follow_up_date || '',
-      attachments: log?.attachments || []
+      child_id: log?.child_id ?? childId ?? '',
+      category_id: log?.category_id ?? '',
+      title: log?.title ?? '',
+      content: log?.content ?? '',
+      mood_score: log?.mood_score ?? undefined,
+      intensity_level: log?.intensity_level ?? 'medium',
+      log_date: log?.log_date ?? format(new Date(), 'yyyy-MM-dd'),
+      is_private: log?.is_private ?? false,
+      tags: log?.tags ?? [],
+      location: log?.location ?? '',
+      weather: log?.weather ?? '',
+      follow_up_required: log?.follow_up_required ?? false,
+      follow_up_date: log?.follow_up_date ?? '',
+      attachments: log?.attachments ?? []
     }
   });
 
@@ -432,7 +428,7 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Log
           .order('sort_order');
 
         if (error) throw error;
-        setCategories(data || []);
+        setCategories(data ?? []);
       } catch (error) {
         console.error('Error fetching categories:', error);
       } finally {
@@ -465,6 +461,16 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Log
 
   const selectedChild = children.find(child => child.id === form.watch('child_id'));
   const followUpRequired = form.watch('follow_up_required');
+
+  // Extracted label for submit button to avoid nested ternary in JSX
+  let submitButtonLabel = '';
+  if (form.formState.isSubmitting) {
+    submitButtonLabel = 'Guardando...';
+  } else if (mode === 'create') {
+    submitButtonLabel = 'Crear Registro';
+  } else {
+    submitButtonLabel = 'Guardar Cambios';
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -527,7 +533,7 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Log
                           <SelectItem key={child.id} value={child.id}>
                             <div className="flex items-center space-x-2">
                               <Avatar className="h-6 w-6">
-                                <AvatarImage src={child.avatar_url} />
+                                <AvatarImage src={child.avatar_url ?? undefined} />
                                 <AvatarFallback className="text-xs">
                                   {child.name.charAt(0)}
                                 </AvatarFallback>
@@ -547,7 +553,7 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Log
               {selectedChild && (
                 <div className="p-4 bg-blue-50 rounded-lg flex items-center space-x-3">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={selectedChild.avatar_url} />
+                    <AvatarImage src={selectedChild.avatar_url ?? undefined} />
                     <AvatarFallback className="bg-blue-200 text-blue-700">
                       {selectedChild.name.charAt(0)}
                     </AvatarFallback>
@@ -919,11 +925,7 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Log
           {/* Form Actions */}
           <div className="flex justify-end space-x-4 pt-6 border-t">
             {onCancel && (
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onCancel}
-              >
+              <Button variant="outline" onClick={onCancel}>
                 Cancelar
               </Button>
             )}
@@ -932,12 +934,7 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Log
               disabled={form.formState.isSubmitting}
             >
               <SaveIcon className="mr-2 h-4 w-4" />
-              {form.formState.isSubmitting
-                ? 'Guardando...'
-                : mode === 'create' 
-                  ? 'Crear Registro' 
-                  : 'Guardar Cambios'
-              }
+              {submitButtonLabel}
             </Button>
           </div>
         </form>
