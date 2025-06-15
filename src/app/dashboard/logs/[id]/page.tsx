@@ -40,7 +40,6 @@ import {
   ArrowLeftIcon,
   UserIcon,
   TagIcon,
-  ThermometerIcon,
   ReplyIcon
 } from 'lucide-react';
 import { format } from 'date-fns';

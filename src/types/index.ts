@@ -270,6 +270,7 @@ export interface LogUpdate {
 
 // Tipo combinado para logs con información detallada
 export interface LogWithDetails extends DailyLog {
+  logged_by_avatar: string | undefined;
   logged_by_name: ReactNode;
   reviewer_name: ReactNode;
   can_edit: any;
