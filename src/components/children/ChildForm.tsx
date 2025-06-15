@@ -492,7 +492,7 @@ function EducationalInfoForm({ educationalInfo, onChange }: Readonly<Educational
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             {(educationalInfo.accommodations ?? []).map((accommodation: string, index: number) => (
-              <Badge key={index} variant="secondary" className="text-sm">
+              <Badge key={accommodation} variant="secondary" className="text-sm">
                 {accommodation}
                 <Button
                   type="button"
