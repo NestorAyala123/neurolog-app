@@ -331,6 +331,9 @@ export interface ChildFilters {
 // ================================================================
 
 export interface DashboardStats {
+  last_log_date: string | number | Date;
+  last_log_date: any;
+  avg_mood_score: any;
   total_children: number;
   total_logs: number;
   logs_this_week: number;
