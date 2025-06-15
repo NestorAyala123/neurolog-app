@@ -183,7 +183,7 @@ function MoodSelector({ value, onChange }: Readonly<MoodSelectorProps>) {
 
 function AttachmentsManager({ attachments, onChange, childId }: Readonly<AttachmentsManagerProps>) {
   const [uploading, setUploading] = useState(false);
-  // const { user } = useAuth();
+  const { user } = useAuth();
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -394,7 +394,6 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Rea
   const { children } = useChildren();
   const { createLog, updateLog } = useLogs();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
   const router = useRouter();
 
   const form = useForm<LogFormData>({
@@ -432,13 +431,11 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Rea
       } catch (error) {
         console.error('Error fetching categories:', error);
       } finally {
-        setLoadingCategories(false);
       }
     }
 
     fetchCategories();
   }, []);
-
   const onSubmit = async (data: LogFormData) => {
     try {
       let result: DailyLog;
