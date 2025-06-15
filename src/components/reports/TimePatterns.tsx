@@ -26,18 +26,18 @@ interface AdvancedInsightsProps {
 // TIMEPATTERNS COMPONENT
 // ================================================================
 
-export function TimePatterns({ logs }: TimePatternsProps) {
+export function TimePatterns({ logs }: Readonly<TimePatternsProps>) {
   // Analizar patrones por hora del día
   const hourlyPattern = logs.reduce((acc, log) => {
     const hour = new Date(log.created_at).getHours();
-    acc[hour] = (acc[hour] || 0) + 1;
+    acc[hour] = (acc[hour] ?? 0) + 1;
     return acc;
   }, {} as Record<number, number>);
 
   // Analizar patrones por día de la semana
   const weeklyPattern = logs.reduce((acc, log) => {
     const day = new Date(log.created_at).getDay();
-    acc[day] = (acc[day] || 0) + 1;
+    acc[day] = (acc[day] ?? 0) + 1;
     return acc;
   }, {} as Record<number, number>);
 
@@ -93,7 +93,7 @@ export function TimePatterns({ logs }: TimePatternsProps) {
         <h4 className="text-sm font-medium mb-2">Distribución por días de la semana</h4>
         <div className="flex space-x-1">
           {dayNames.map((day, index) => {
-            const count = weeklyPattern[index] || 0;
+            const count = weeklyPattern[index] ?? 0;
             const values = Object.values(weeklyPattern);
             const maxCount = values.length > 0 ? Math.max(...values) : 0;
             const intensity = maxCount > 0 ? (count / maxCount) * 100 : 0;
@@ -122,7 +122,7 @@ export function TimePatterns({ logs }: TimePatternsProps) {
 // CORRELATION ANALYSIS COMPONENT
 // ================================================================
 
-export function CorrelationAnalysis({ logs }: CorrelationAnalysisProps) {
+export function CorrelationAnalysis({ logs }: Readonly<CorrelationAnalysisProps>) {
   // Función helper para calcular correlación
   function calculateCorrelation(data: any[], field1: string, field2Func: (item: any) => number): number {
     if (data.length < 2) return 0;
@@ -141,19 +141,23 @@ export function CorrelationAnalysis({ logs }: CorrelationAnalysisProps) {
   }
 
   // Calcular correlación entre estado de ánimo e intensidad
+  const intensityLevelToNumber = (log: any) => {
+    if (log.intensity_level === 'low') return 1;
+    if (log.intensity_level === 'medium') return 2;
+    return 3;
+  };
+
   const moodIntensityCorr = calculateCorrelation(
     logs.filter(l => l.mood_score && l.intensity_level),
     'mood_score',
-    log => log.intensity_level === 'low' ? 1 : log.intensity_level === 'medium' ? 2 : 3
+    intensityLevelToNumber
   );
 
   // Calcular correlación entre categorías y estado de ánimo
   const categoryMoodCorr = logs.reduce((acc, log) => {
     if (!log.mood_score || !log.category_name) return acc;
     
-    if (!acc[log.category_name]) {
-      acc[log.category_name] = { total: 0, count: 0 };
-    }
+    acc[log.category_name] ??= { total: 0, count: 0 };
     
     acc[log.category_name].total += log.mood_score;
     acc[log.category_name].count += 1;
@@ -161,11 +165,14 @@ export function CorrelationAnalysis({ logs }: CorrelationAnalysisProps) {
     return acc;
   }, {} as Record<string, { total: number; count: number }>);
 
-  const categoryAverages = Object.entries(categoryMoodCorr).map(([category, data]) => ({
-    category,
-    avgMood: data.total / data.count,
-    count: data.count
-  })).sort((a, b) => b.avgMood - a.avgMood);
+  const categoryAverages = Object.entries(categoryMoodCorr).map(([category, data]) => {
+    const { total, count } = data as { total: number; count: number };
+    return {
+      category,
+      avgMood: total / count,
+      count
+    };
+  }).sort((a, b) => b.avgMood - a.avgMood);
 
   const getCorrelationIcon = (correlation: number) => {
     if (correlation > 0.3) return TrendingUp;
@@ -262,16 +269,37 @@ export function AdvancedInsights({ logs }: AdvancedInsightsProps) {
       const totalDays = 30; // últimos 30 días
       const frequency = (daysWithLogs / totalDays) * 100;
       
+      let frequencyType: string;
+      if (frequency > 80) {
+        frequencyType = 'success';
+      } else if (frequency > 50) {
+        frequencyType = 'warning';
+      } else {
+        frequencyType = 'info';
+      }
+      let frequencyIcon;
+      if (frequency > 80) {
+        frequencyIcon = CheckCircle;
+      } else if (frequency > 50) {
+        frequencyIcon = Target;
+      } else {
+        frequencyIcon = AlertTriangle;
+      }
+      let recommendation: string;
+      if (frequency < 50) {
+        recommendation = 'Intenta mantener registros más regulares para obtener mejores insights';
+      } else if (frequency < 80) {
+        recommendation = 'Buen ritmo de registro, mantén la consistencia';
+      } else {
+        recommendation = 'Excelente consistencia en los registros';
+      }
+
       insights.push({
-        type: frequency > 80 ? 'success' : frequency > 50 ? 'warning' : 'info',
-        icon: frequency > 80 ? CheckCircle : frequency > 50 ? Target : AlertTriangle,
+        type: frequencyType,
+        icon: frequencyIcon,
         title: 'Consistencia en el registro',
         description: `Registros en ${daysWithLogs} de ${totalDays} días (${frequency.toFixed(0)}%)`,
-        recommendation: frequency < 50 
-          ? 'Intenta mantener registros más regulares para obtener mejores insights'
-          : frequency < 80
-          ? 'Buen ritmo de registro, mantén la consistencia'
-          : 'Excelente consistencia en los registros'
+        recommendation
       });
     }
 
@@ -284,30 +312,43 @@ export function AdvancedInsights({ logs }: AdvancedInsightsProps) {
       
       const trend = recentAvg - avgMood;
       
+      let trendType: string;
+      if (trend > 0.5) {
+        trendType = 'success';
+      } else if (trend < -0.5) {
+        trendType = 'warning';
+      } else {
+        trendType = 'info';
+      }
+      let recommendation: string;
+      if (trend > 0.5) {
+        recommendation = 'Tendencia positiva en el estado de ánimo reciente';
+      } else if (trend < -0.5) {
+        recommendation = 'Considera revisar factores que puedan estar afectando el bienestar';
+      } else {
+        recommendation = 'Estado de ánimo estable';
+      }
+
       insights.push({
-        type: trend > 0.5 ? 'success' : trend < -0.5 ? 'warning' : 'info',
+        type: trendType,
         icon: Brain,
         title: 'Tendencia del estado de ánimo',
         description: `Promedio general: ${avgMood.toFixed(1)}/5, últimos 7 días: ${recentAvg.toFixed(1)}/5`,
-        recommendation: trend > 0.5 
-          ? 'Tendencia positiva en el estado de ánimo reciente'
-          : trend < -0.5
-          ? 'Considera revisar factores que puedan estar afectando el bienestar'
-          : 'Estado de ánimo estable'
+        recommendation
       });
     }
 
     // Análisis de categorías
     const categoryCount = logs.reduce((acc, log) => {
       if (log.category_name) {
-        acc[log.category_name] = (acc[log.category_name] || 0) + 1;
+        acc[log.category_name] = (acc[log.category_name] ?? 0) + 1;
       }
       return acc;
     }, {} as Record<string, number>);
 
     const categories = Object.entries(categoryCount);
     if (categories.length > 0) {
-      const mostUsedCategory = categories.sort(([,a], [,b]) => b - a)[0];
+      const mostUsedCategory = categories.toSorted(([, a], [, b]) => (b as number) - (a as number))[0] as [string, number];
       
       insights.push({
         type: 'info',
@@ -335,41 +376,60 @@ export function AdvancedInsights({ logs }: AdvancedInsightsProps) {
 
   return (
     <div className="space-y-4">
-      {insights.map((insight, index) => (
-        <Card key={index} className="border-l-4 border-l-blue-500">
-          <CardContent className="pt-4">
-            <div className="flex items-start space-x-3">
-              <div className={`p-2 rounded-lg ${
-                insight.type === 'success' ? 'bg-green-100' :
-                insight.type === 'warning' ? 'bg-yellow-100' :
-                'bg-blue-100'
-              }`}>
-                {React.createElement(insight.icon, {
-                  className: `h-5 w-5 ${
-                    insight.type === 'success' ? 'text-green-600' :
-                    insight.type === 'warning' ? 'text-yellow-600' :
-                    'text-blue-600'
-                  }`
-                })}
+      {insights.map((insight) => {
+        let bgColor = 'bg-blue-100';
+        if (insight.type === 'success') {
+          bgColor = 'bg-green-100';
+        } else if (insight.type === 'warning') {
+          bgColor = 'bg-yellow-100';
+        }
+
+        // Extract icon color class to a variable
+        const iconColorClass =
+          insight.type === 'success'
+            ? 'text-green-600'
+            : insight.type === 'warning'
+            ? 'text-yellow-600'
+            : 'text-blue-600';
+
+        // Extract Badge variant to a variable
+        const badgeVariant =
+          insight.type === 'success'
+            ? 'default'
+            : insight.type === 'warning'
+            ? 'destructive'
+            : 'secondary';
+
+        // Extract label for Badge to avoid nested ternary
+        let badgeLabel = 'Info';
+        if (insight.type === 'success') {
+          badgeLabel = 'Positivo';
+        } else if (insight.type === 'warning') {
+          badgeLabel = 'Atención';
+        }
+
+        return (
+          <Card key={insight.title} className="border-l-4 border-l-blue-500">
+            <CardContent className="pt-4">
+              <div className="flex items-start space-x-3">
+                <div className={`p-2 rounded-lg ${bgColor}`}>
+                  {React.createElement(insight.icon, {
+                    className: `h-5 w-5 ${iconColorClass}`
+                  })}
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-medium text-gray-900">{insight.title}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{insight.description}</p>
+                  <p className="text-sm text-gray-500 mt-2 italic">{insight.recommendation}</p>
+                </div>
+                <Badge variant={badgeVariant}>
+                  {badgeLabel}
+                </Badge>
               </div>
-              <div className="flex-1">
-                <h4 className="font-medium text-gray-900">{insight.title}</h4>
-                <p className="text-sm text-gray-600 mt-1">{insight.description}</p>
-                <p className="text-sm text-gray-500 mt-2 italic">{insight.recommendation}</p>
-              </div>
-              <Badge variant={
-                insight.type === 'success' ? 'default' :
-                insight.type === 'warning' ? 'destructive' :
-                'secondary'
-              }>
-                {insight.type === 'success' ? 'Positivo' :
-                 insight.type === 'warning' ? 'Atención' :
-                 'Info'}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }
