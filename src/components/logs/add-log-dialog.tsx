@@ -38,9 +38,9 @@ interface FormData {
   log_date: string
 }
 
-export function AddLogDialog({ open, onOpenChange, preselectedChildId }: AddLogDialogProps) {
+export function AddLogDialog({ open, onOpenChange, preselectedChildId }: Readonly<AddLogDialogProps>) {
   const [formData, setFormData] = useState<FormData>({
-    child_id: preselectedChildId || '',
+    child_id: preselectedChildId ?? '',
     category_id: '',
     title: '',
     content: '',
@@ -70,7 +70,7 @@ export function AddLogDialog({ open, onOpenChange, preselectedChildId }: AddLogD
 
   const resetForm = () => {
     setFormData({
-      child_id: preselectedChildId || '',
+      child_id: preselectedChildId ?? '',
       category_id: '',
       title: '',
       content: '',
@@ -97,7 +97,7 @@ export function AddLogDialog({ open, onOpenChange, preselectedChildId }: AddLogD
     try {
       const logData = {
         child_id: formData.child_id,
-        category_id: formData.category_id || null,
+        category_id: formData.category_id ?? null,
         title: formData.title.trim(),
         content: formData.content.trim(),
         mood_score: formData.mood_score,
@@ -117,7 +117,7 @@ export function AddLogDialog({ open, onOpenChange, preselectedChildId }: AddLogD
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo agregar el registro",
+        description: error.message ?? "No se pudo agregar el registro",
         variant: "destructive",
       })
     } finally {
@@ -248,6 +248,8 @@ export function AddLogDialog({ open, onOpenChange, preselectedChildId }: AddLogD
                     )}
                     disabled={loading}
                     className="p-1 hover:bg-gray-100 rounded transition-colors"
+                    aria-label={`Seleccionar ${star} estrella${star > 1 ? 's' : ''}`}
+                    title={`Seleccionar ${star} estrella${star > 1 ? 's' : ''}`}
                   >
                     <Star
                       className={`h-5 w-5 ${

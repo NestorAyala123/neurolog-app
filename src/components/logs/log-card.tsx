@@ -21,12 +21,13 @@ interface LogWithDetails {
   child_name: string
   category_name: string | null
   category_color: string
+  category_id: string | null
   logged_by_name: string
   can_edit: boolean
 }
 
 interface LogCardProps {
-  log: LogWithDetails
+  readonly log: LogWithDetails
 }
 
 export function LogCard({ log }: LogCardProps) {

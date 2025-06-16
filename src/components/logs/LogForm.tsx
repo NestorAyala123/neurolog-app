@@ -36,7 +36,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { useChildren } from '@/hooks/use-children';
 import { useLogs } from '@/hooks/use-logs';
 import { uploadFile, getPublicUrl } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import type { 
   DailyLog, 
   LogInsert, 
@@ -183,7 +183,7 @@ function MoodSelector({ value, onChange }: Readonly<MoodSelectorProps>) {
 
 function AttachmentsManager({ attachments, onChange, childId }: Readonly<AttachmentsManagerProps>) {
   const [uploading, setUploading] = useState(false);
-  const { user } = useAuth();
+   const { user } = useAuth();
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -390,7 +390,7 @@ function TagsInput({ tags, onChange }: Readonly<TagsInputProps>) {
 // ================================================================
 
 export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Readonly<LogFormProps>) {
-  const { user } = useAuth();
+  useAuth();
   const { children } = useChildren();
   const { createLog, updateLog } = useLogs();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -430,7 +430,6 @@ export default function LogForm({ log, childId, mode, onSuccess, onCancel }: Rea
         setCategories(data ?? []);
       } catch (error) {
         console.error('Error fetching categories:', error);
-      } finally {
       }
     }
 

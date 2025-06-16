@@ -46,7 +46,7 @@ interface FormData {
   category_id: string
 }
 
-export function EditLogDialog({ log, open, onOpenChange }: EditLogDialogProps) {
+export function EditLogDialog({ log, open, onOpenChange }: Readonly<EditLogDialogProps>) {
   const [formData, setFormData] = useState<FormData>({
     title: '',
     content: '',
@@ -70,7 +70,7 @@ export function EditLogDialog({ log, open, onOpenChange }: EditLogDialogProps) {
         mood_score: log.mood_score,
         intensity_level: log.intensity_level,
         log_date: log.log_date,
-        category_id: log.category_id || ''
+        category_id: log.category_id ?? ''
       })
     }
   }, [open, log])
@@ -100,7 +100,7 @@ export function EditLogDialog({ log, open, onOpenChange }: EditLogDialogProps) {
         mood_score: formData.mood_score,
         intensity_level: formData.intensity_level,
         log_date: formData.log_date,
-        category_id: formData.category_id || null
+        category_id: formData.category_id ?? null
       }
 
       await updateLog(log.id, updates)
@@ -114,7 +114,7 @@ export function EditLogDialog({ log, open, onOpenChange }: EditLogDialogProps) {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "No se pudo actualizar el registro",
+        description: error.message ?? "No se pudo actualizar el registro",
         variant: "destructive",
       })
     } finally {
@@ -199,6 +199,7 @@ export function EditLogDialog({ log, open, onOpenChange }: EditLogDialogProps) {
                   <button
                     key={star}
                     type="button"
+                    title={`Seleccionar ${star} estrella${star > 1 ? 's' : ''}`}
                     onClick={() => handleInputChange('mood_score', 
                       formData.mood_score === star ? null : star
                     )}
