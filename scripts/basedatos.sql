@@ -159,7 +159,7 @@ CREATE TABLE audit_logs (
   ip_address INET,
   user_agent TEXT,
   session_id TEXT,
-  risk_level TEXT CHECK (risk_level IN ('low', 'medium', 'high', 'critical')) DEFAULT 'low',
+  risk_level VARCHAR(20) CHECK (risk_level IN ('low', 'medium', 'high', 'critical')) DEFAULT 'low',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -386,7 +386,7 @@ SELECT
   COUNT(CASE WHEN dl.is_private THEN 1 END) as private_logs,
   COUNT(CASE WHEN dl.reviewed_at IS NOT NULL THEN 1 END) as reviewed_logs
 FROM children c
-LEFT JOIN daily_logs dl ON c.id = dl.child_id AND (dl.is_deleted = false OR dl.is_deleted IS NULL)
+LEFT JOIN daily_logs dl ON c.id = dl.child_id AND NOT dl.is_deleted
 WHERE (c.created_by = auth.uid() OR EXISTS (
   SELECT 1 FROM user_child_relations 
   WHERE child_id = c.id 
@@ -588,4 +588,5 @@ BEGIN
   RAISE NOTICE '✅ Mejor manejo de relaciones usuario-niño';
   RAISE NOTICE '';
   RAISE NOTICE 'PRÓXIMO PASO: Probar la aplicación NeuroLog con los nuevos permisos';
-END $$;
+END;
+$$ LANGUAGE plpgsql;
