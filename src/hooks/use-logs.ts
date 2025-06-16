@@ -167,11 +167,11 @@ export function useLogs(options: UseLogsOptions = {}): UseLogsReturn {
 
   // Helper to map logs with fallback values
   const mapLogs = (data: any[]): LogWithDetails[] => {
-    return (data || []).map(log => ({
+    return (data ?? []).map(log => ({
       ...log,
-      child: log.child || { id: log.child_id, name: 'Niño desconocido', avatar_url: null },
-      category: log.category || { id: '', name: 'Sin categoría', color: '#gray', icon: 'circle' },
-      logged_by_profile: log.logged_by_profile || { id: log.logged_by, full_name: 'Usuario desconocido', avatar_url: null }
+      child: log.child ?? { id: log.child_id, name: 'Niño desconocido', avatar_url: null },
+      category: log.category ?? { id: '', name: 'Sin categoría', color: '#gray', icon: 'circle' },
+      logged_by_profile: log.logged_by_profile ?? { id: log.logged_by, full_name: 'Usuario desconocido', avatar_url: null }
     }));
   };
 
@@ -218,7 +218,7 @@ export function useLogs(options: UseLogsOptions = {}): UseLogsReturn {
 
       if (error) throw error;
 
-      const newLogs = mapLogs(data) as LogWithDetails[];
+      const newLogs = mapLogs(data);
 
       if (mountedRef.current) {
         setLogs(prev => append ? [...prev, ...newLogs] : newLogs);
@@ -269,12 +269,12 @@ export function useLogs(options: UseLogsOptions = {}): UseLogsReturn {
 
       const newStats: DashboardStats = {
         total_children: accessibleChildrenIds.length,
-        total_logs: totalLogs || 0,
-        logs_this_week: logsThisWeek || 0,
-        logs_this_month: logsThisMonth || 0,
-        active_categories: activeCategories || 0,
-        pending_reviews: pendingReviews || 0,
-        follow_ups_due: followUpsDue || 0
+        total_logs: totalLogs ?? 0,
+        logs_this_week: logsThisWeek ?? 0,
+        logs_this_month: logsThisMonth ?? 0,
+        active_categories: activeCategories ?? 0,
+        pending_reviews: pendingReviews ?? 0,
+        follow_ups_due: followUpsDue ?? 0
       };
 
       if (mountedRef.current) {
@@ -475,9 +475,41 @@ export function useLogs(options: UseLogsOptions = {}): UseLogsReturn {
   }, [logs, userId]);
 
   const exportLogs = useCallback(async (format: 'csv' | 'pdf', filters?: LogFilters): Promise<void> => {
-    // TODO: Implementar exportación
-    console.log('Exportando logs en formato:', format, 'con filtros:', filters);
-  }, []);
+    let exportData = logs;
+    if (filters) {
+      exportData = filterLogs(filters);
+    }
+
+    if (format === 'csv') {
+      const headers = [
+        'ID', 'Fecha', 'Título', 'Contenido', 'Niño', 'Categoría', 'Privado', 'Activo'
+      ];
+      const rows = exportData.map(log => [
+        log.id,
+        log.created_at,
+        `"${(log.title ?? '').replace(/"/g, '""')}"`,
+        `"${(log.content ?? '').replace(/"/g, '""')}"`,
+        log.child?.name ?? '',
+        log.category?.name ?? '',
+        log.is_private ? 'Sí' : 'No',
+        log.is_active ? 'Sí' : 'No'
+      ]);
+      const csvContent = [headers, ...rows].map(r => r.join(',')).join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'logs.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } else if (format === 'pdf') {
+      // PDF export typically requires a library like jsPDF or pdfmake.
+      // For now, show a message.
+      alert('Exportación a PDF no implementada. Por favor, use la exportación CSV.');
+    }
+  }, [logs, filterLogs]);
 
   // ================================================================
   // EFFECTS CORREGIDOS - SIN LOOPS INFINITOS
