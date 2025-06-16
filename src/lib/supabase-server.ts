@@ -40,6 +40,7 @@ export async function createServerComponentClient() {
             // The `setAll` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing
             // user sessions.
+            console.error('Error in setAll:', error);
           }
         },
       },

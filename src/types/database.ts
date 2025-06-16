@@ -3,6 +3,9 @@
 // NOTA: Este es un archivo placeholder. Para obtener los tipos completos ejecuta:
 // npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/types/database.ts
 
+type UserRole = 'parent' | 'teacher' | 'specialist' | 'admin';
+type IntensityLevel = 'low' | 'medium' | 'high';
+
 export interface Database {
   public: {
     Tables: {
@@ -11,7 +14,7 @@ export interface Database {
           id: string
           email: string
           full_name: string
-          role: 'parent' | 'teacher' | 'specialist' | 'admin'
+          role: UserRole
           avatar_url?: string
           phone?: string
           is_active: boolean
@@ -28,7 +31,7 @@ export interface Database {
           id: string
           email: string
           full_name: string
-          role?: 'parent' | 'teacher' | 'specialist' | 'admin'
+          role?: UserRole
           avatar_url?: string
           phone?: string
           is_active?: boolean
@@ -45,7 +48,7 @@ export interface Database {
           id?: string
           email?: string
           full_name?: string
-          role?: 'parent' | 'teacher' | 'specialist' | 'admin'
+          role?: UserRole
           avatar_url?: string
           phone?: string
           is_active?: boolean
@@ -151,8 +154,7 @@ export interface Database {
           category_id?: string
           title: string
           content: string
-          mood_score?: number
-          intensity_level: 'low' | 'medium' | 'high'
+          intensity_level: IntensityLevel
           logged_by: string
           log_date: string
           is_private: boolean
@@ -177,8 +179,7 @@ export interface Database {
           category_id?: string
           title: string
           content: string
-          mood_score?: number
-          intensity_level?: 'low' | 'medium' | 'high'
+          intensity_level?: IntensityLevel
           logged_by: string
           log_date?: string
           is_private?: boolean
