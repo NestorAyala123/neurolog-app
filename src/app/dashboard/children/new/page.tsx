@@ -186,7 +186,7 @@ export default function NewChildPage() {
                 <Input
                   id="birth_date"
                   type="date"
-                  value={formData.birth_date || ''}
+                  value={formData.birth_date ?? ''}
                   onChange={(e) => setFormData({...formData, birth_date: e.target.value})}
                   className={errors.birth_date ? 'border-red-500' : ''}
                 />
